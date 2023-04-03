@@ -1,0 +1,114 @@
+name: Cilium Integration Tests
+on:
+  push:
+    branches:
+      - master
+  pull_request: {}
+  issue_comment:
+    types:
+      - created
+env:
+  KIND_VERSION: v0.18.0
+  CILIUM_REPO_REF: master
+  CILIUM_CLI_REF: v0.13.2
+
+jobs:
+  cilium-connectivity-tests:
+    timeout-minutes: 360
+    name: Execute Cilium Connectivity Tests
+    runs-on: ubuntu-latest-64-cores-256gb
+    steps:
+      - name: Prepare variables for pushing to master
+        if: github.event_name == 'push'
+        run: |
+          echo "PROXY_IMAGE=quay.io/cilium/cilium-envoy" >> $GITHUB_ENV
+          echo "PROXY_TAG=${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Prepare variables for PR
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "PROXY_IMAGE=quay.io/cilium/cilium-envoy-dev" >> $GITHUB_ENV
+          echo "PROXY_TAG=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+
+      - name: Prepare variables for issue comment on a PR
+        if: github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/cilium-integration-test')
+        run: |
+          echo "PROXY_IMAGE=quay.io/cilium/cilium-envoy-dev" >> $GITHUB_ENV
+          echo "PROXY_TAG=${{ github.event.issue.pull_request.head.sha }}" >> $GITHUB_ENV
+
+          commentBody="${{ github.event.comment.body }}"
+
+          ciliumRef=${CILIUM_REPO_REF}
+          if [[ "$commentBody" == *" ciliumRef="* ]]; then
+            ciliumRef=$(echo "$commentBody" | sed -E 's|.* ciliumRef=([^ ]*).*|\1|g')
+          fi
+          echo "CILIUM_REPO_REF=${ciliumRef}" >> $GITHUB_ENV
+
+          ciliumCliRef=${CILIUM_CLI_REF}
+          if [[ "${{ github.event.comment.body }}" == *" ciliumCliRef="* ]]; then
+            ciliumCliRef=$(echo "$commentBody" | sed -E 's|.* ciliumCliRef=([^ ]*).*|\1|g')
+          fi
+          echo "CILIUM_CLI_REF=${ciliumCliRef}" >> $GITHUB_ENV
+
+      - name: Checkout Cilium ${{ env.CILIUM_REPO_REF }}
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+        with:
+          repository: cilium/cilium # Be aware that this is the Cilium repository and not the one of the proxy itself!
+          ref: ${{ env.CILIUM_REPO_REF }}
+
+      - name: Create kind cluster
+        uses: helm/kind-action@d8ccf8fb623ce1bb360ae2f45f323d9d5c5e9f00 # v1.5.0
+        with:
+          version: ${{ env.KIND_VERSION }}
+          config: '.github/kind-config.yaml'
+          cluster_name: 'kind'
+
+      - name: Install Cilium CLI
+        run: |
+          curl -sSL --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${{ env.CILIUM_CLI_REF }}/cilium-linux-amd64.tar.gz{,.sha256sum}
+          sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
+          sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
+          rm cilium-linux-amd64.tar.gz{,.sha256sum}
+          cilium version
+
+      - name: Patch Cilium Agent Dockerfile
+        shell: bash
+        run: |
+          sed -i -E 's|(FROM )(quay\.io\/cilium\/cilium-envoy:)([0-9a-z]*)(@sha256:[0-9a-z]*)( as cilium-envoy)|\1${{ env.PROXY_IMAGE }}:${{ env.PROXY_TAG }}\5|' ./images/cilium/Dockerfile
+          cat ./images/cilium/Dockerfile
+
+      - name: Wait for Cilium Proxy image to be available
+        timeout-minutes: 30
+        shell: bash
+        run: until docker manifest inspect ${{ env.PROXY_IMAGE }}:${{ env.PROXY_TAG }} &> /dev/null; do sleep 15s; done
+
+      - name: Build Cilium Agent & Operator with patched Cilium Proxy Image
+        shell: bash
+        run: DOCKER_IMAGE_TAG=test make docker-cilium-image docker-operator-generic-image
+
+      - name: Load Cilium Images into kind
+        shell: bash
+        run: |
+          kind load docker-image \
+            --name kind \
+          quay.io/cilium/operator-generic:test \
+          quay.io/cilium/cilium:test
+
+      - name: Install Cilium
+        shell: bash
+        run: |
+          cilium install \
+            --chart-directory install/kubernetes/cilium \
+            --config monitor-aggregation=none \
+            --helm-set loadBalancer.l7.backend=envoy \
+            --helm-set tls.secretsBackend=k8s \
+            --agent-image=quay.io/cilium/cilium:test \
+            --operator-image=quay.io/cilium/operator-generic:test \
+            --helm-set image.pullPolicy=IfNotPresent \
+            --helm-set operator.image.pullPolicy=IfNotPresent \
+            --config debug=true \
+            --config debug-verbose=envoy
+
+      - name: Execute Cilium Connectivity Tests
+        shell: bash
+        run: cilium connectivity test
