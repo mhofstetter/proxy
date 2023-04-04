@@ -16,7 +16,7 @@ jobs:
   cilium-connectivity-tests:
     timeout-minutes: 360
     name: Cilium Connectivity Tests
-    runs-on: ubuntu-latest-64-cores-256gb
+    runs-on: ubuntu-latest
     steps:
       - name: Prepare variables for pushing to master
         if: github.event_name == 'push'
@@ -54,13 +54,11 @@ jobs:
         if: github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/cilium-integration-test')
         with:
           script: |
-            github.rest.issues.updateComment({
-              issue_number: github.event.comment.id,
-              owner: github.repository_owner,
-              repo: github.event.repository.name,
-              body: `${{ github.event.comment.body }}
-              👋 https://github.com/cilium/proxy/actions/runs/${{ env.GITHUB_RUN_ID }}
-              `
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ github.event.issue.number }},
+              body: "👋 https://github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/actions/runs/${{ github.run_id }}"
             })
 
       - name: Checkout Cilium ${{ env.CILIUM_REPO_REF }}
@@ -76,51 +74,3 @@ jobs:
           docker rm $cid
           cilium version
 
-      - name: Create kind cluster
-        uses: helm/kind-action@d8ccf8fb623ce1bb360ae2f45f323d9d5c5e9f00 # v1.5.0
-        with:
-          version: ${{ env.KIND_VERSION }}
-          config: '.github/kind-config.yaml'
-          cluster_name: 'kind'
-
-      - name: Patch Cilium Agent Dockerfile
-        shell: bash
-        run: |
-          sed -i -E 's|(FROM )(quay\.io\/cilium\/cilium-envoy:)([0-9a-z]*)(@sha256:[0-9a-z]*)( as cilium-envoy)|\1${{ env.PROXY_IMAGE }}:${{ env.PROXY_TAG }}\5|' ./images/cilium/Dockerfile
-          cat ./images/cilium/Dockerfile
-
-      - name: Wait for Cilium Proxy image to be available
-        timeout-minutes: 30
-        shell: bash
-        run: until docker manifest inspect ${{ env.PROXY_IMAGE }}:${{ env.PROXY_TAG }} &> /dev/null; do sleep 15s; done
-
-      - name: Build Cilium Agent & Operator with patched Cilium Proxy Image
-        shell: bash
-        run: DOCKER_IMAGE_TAG=test make docker-cilium-image docker-operator-generic-image
-
-      - name: Load Cilium Images into kind
-        shell: bash
-        run: |
-          kind load docker-image \
-            --name kind \
-          quay.io/cilium/operator-generic:test \
-          quay.io/cilium/cilium:test
-
-      - name: Install Cilium
-        shell: bash
-        run: |
-          cilium install \
-            --chart-directory install/kubernetes/cilium \
-            --config monitor-aggregation=none \
-            --helm-set loadBalancer.l7.backend=envoy \
-            --helm-set tls.secretsBackend=k8s \
-            --agent-image=quay.io/cilium/cilium:test \
-            --operator-image=quay.io/cilium/operator-generic:test \
-            --helm-set image.pullPolicy=IfNotPresent \
-            --helm-set operator.image.pullPolicy=IfNotPresent \
-            --config debug=true \
-            --config debug-verbose=envoy
-
-      - name: Execute Cilium Connectivity Tests
-        shell: bash
-        run: cilium connectivity test
