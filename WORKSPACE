@@ -74,3 +74,15 @@ envoy_python_dependencies()
 load("@envoy//bazel:dependency_imports.bzl", "envoy_dependency_imports")
 
 envoy_dependency_imports()
+
+# Hedron's Compile Commands Extractor for Bazel
+# https://github.com/hedronvision/bazel-compile-commands-extractor
+git_repository(
+    name = "hedron_compile_commands",
+    # // clang-format off: Envoy's format check: Only repository_locations.bzl may contains URL references
+    remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
+    # // clang-format on
+    branch = "main",
+)
+load("@hedron_compile_commands//:workspace_setup.bzl", "hedron_compile_commands_setup")
+hedron_compile_commands_setup()

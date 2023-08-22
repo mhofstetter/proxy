@@ -42,3 +42,9 @@
 
 /proxylib/libcilium.so*
 /proxylib/_obj*
+
+### Automatically added by Hedron's Bazel Compile Commands Extractor: https://github.com/hedronvision/bazel-compile-commands-extractor
+# Ignore generated output. Although valuable (after all, the primary purpose of `bazel-compile-commands-extractor` is to produce `compile_commands.json`!), it should not be checked in.
+/compile_commands.json
+# Ignore the directory in which `clangd` stores its local index.
+/.cache/

@@ -52,3 +52,13 @@ sh_binary(
     name = "envoy_build_fixer.py",
     srcs = ["@envoy//tools/code_format:envoy_build_fixer.py"],
 )
+
+load("@hedron_compile_commands//:refresh_compile_commands.bzl", "refresh_compile_commands")
+
+refresh_compile_commands(
+    name = "refresh_compile_commands",
+
+    targets = {
+      "//:all": "",
+    },
+)
