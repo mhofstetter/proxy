@@ -100,8 +100,8 @@ endef
 	$(SUDO) apt info clang-15 || $(call add_clang_apt_source,$(shell lsb_release -cs))
 	$(SUDO) apt install -y clang-15 llvm-15-dev lld-15 clang-format-15
 
-clang.bazelrc: bazel/setup_clang.sh /usr/lib/llvm-15
-	bazel/setup_clang.sh /usr/lib/llvm-15
+clang.bazelrc: bazel/setup_clang.sh /usr/lib/llvm-14
+	bazel/setup_clang.sh /usr/lib/llvm-14
 	echo "build --config=clang" >> $@
 
 .PHONY: bazel-bin/cilium-envoy
