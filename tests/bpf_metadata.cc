@@ -13,9 +13,6 @@
 
 namespace Envoy {
 
-std::string host_map_config = "version_info: \"0\"";
-std::shared_ptr<const Cilium::PolicyHostMap> hostmap{nullptr}; // Keep reference to singleton
-
 Network::Address::InstanceConstSharedPtr original_dst_address;
 std::shared_ptr<const Cilium::NetworkPolicyMap> npmap{nullptr}; // Keep reference to singleton
 
@@ -25,27 +22,6 @@ std::string policy_path = "";
 std::vector<std::pair<std::string, std::string>> sds_configs{};
 
 namespace {
-
-std::shared_ptr<const Cilium::PolicyHostMap>
-createHostMap(const std::string& config, Server::Configuration::ListenerFactoryContext& context) {
-  return context.singletonManager().getTyped<const Cilium::PolicyHostMap>(
-      "cilium_host_map_singleton", [&config, &context] {
-        std::string path = TestEnvironment::writeStringToFileForTest("host_map.yaml", config);
-        ENVOY_LOG_MISC(debug, "Loading Cilium Host Map from file \'{}\' instead of using gRPC",
-                       path);
-
-        Envoy::Config::Utility::checkFilesystemSubscriptionBackingPath(path, context.api());
-        Envoy::Config::SubscriptionStats stats =
-            Envoy::Config::Utility::generateStats(context.scope());
-        auto map = std::make_shared<Cilium::PolicyHostMap>(context);
-        auto subscription = std::make_unique<Envoy::Config::FilesystemSubscriptionImpl>(
-            context.mainThreadDispatcher(), Envoy::Config::makePathConfigSource(path), *map,
-            std::make_shared<Cilium::PolicyHostDecoder>(), stats,
-            ProtobufMessage::getNullValidationVisitor(), context.api());
-        map->startSubscription(std::move(subscription));
-        return map;
-      });
-}
 
 std::shared_ptr<const Cilium::NetworkPolicyMap>
 createPolicyMap(const std::string& config,
@@ -97,9 +73,6 @@ createPolicyMap(const std::string& config,
 void initTestMaps(Server::Configuration::ListenerFactoryContext& context) {
   // Create the file-based policy map before the filter is created, so that the
   // singleton is set before the gRPC subscription is attempted.
-  hostmap = createHostMap(host_map_config, context);
-  // Create the file-based policy map before the filter is created, so that the
-  // singleton is set before the gRPC subscription is attempted.
   npmap = createPolicyMap(policy_config, sds_configs, context);
 }
 
@@ -118,10 +91,7 @@ TestConfig::TestConfig(const ::cilium::TestBpfMetadata& config,
                        Server::Configuration::ListenerFactoryContext& context)
     : Config(getTestConfig(config), context) {}
 
-TestConfig::~TestConfig() {
-  hostmap.reset();
-  npmap.reset();
-}
+TestConfig::~TestConfig() { npmap.reset(); }
 
 bool TestConfig::getMetadata(Network::ConnectionSocket& socket) {
   // fake setting the local address. It remains the same as required by the test
@@ -146,8 +116,8 @@ bool TestConfig::getMetadata(Network::ConnectionSocket& socket) {
     ENVOY_LOG_MISC(debug, "INGRESS POD_IP: {}", pod_ip);
   } else {
     source_identity = 173;
+    destination_identity = 1;
     auto ip = socket.connectionInfoProvider().localAddress()->ip();
-    destination_identity = hosts_->resolve(ip);
     pod_ip = ip->addressAsString();
     ENVOY_LOG_MISC(debug, "EGRESS POD_IP: {}", pod_ip);
   }

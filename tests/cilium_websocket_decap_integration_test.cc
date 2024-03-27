@@ -3,7 +3,7 @@
 #include "source/common/protobuf/protobuf.h"
 #include "source/common/thread_local/thread_local_impl.h"
 
-#include "tests/bpf_metadata.h" // host_map_config, original_dst_address
+#include "tests/bpf_metadata.h" // original_dst_address
 #include "tests/cilium_http_integration.h"
 
 using namespace std::literals;
@@ -70,17 +70,7 @@ class CiliumWebSocketIntegrationTest : public CiliumHttpIntegrationTest {
 public:
   CiliumWebSocketIntegrationTest()
       : CiliumHttpIntegrationTest(fmt::format(
-            TestEnvironment::substitute(cilium_tcp_proxy_config_fmt, GetParam()), "false")) {
-    host_map_config = R"EOF(version_info: "0"
-resources:
-- "@type": type.googleapis.com/cilium.NetworkPolicyHosts
-  policy: 173
-  host_addresses: [ "192.168.0.1", "f00d::1" ]
-- "@type": type.googleapis.com/cilium.NetworkPolicyHosts
-  policy: 1
-  host_addresses: [ "127.0.0.0/8", "::/104" ]
-)EOF";
-  }
+            TestEnvironment::substitute(cilium_tcp_proxy_config_fmt, GetParam()), "false")) {}
 
   std::string testPolicyFmt() override {
     return TestEnvironment::substitute(R"EOF(version_info: "0"

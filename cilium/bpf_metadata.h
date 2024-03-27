@@ -47,7 +47,6 @@ public:
   std::shared_ptr<const Cilium::NetworkPolicyMap> npmap_{};
   Cilium::CtMapSharedPtr ct_maps_{};
   Cilium::IPCacheSharedPtr ipcache_{};
-  std::shared_ptr<const Cilium::PolicyHostMap> hosts_{};
 };
 
 typedef std::shared_ptr<Config> ConfigSharedPtr;

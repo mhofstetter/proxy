@@ -90,26 +90,6 @@ protected:
     auto addr = socket_.ioHandle().localAddress().get();
     EXPECT_NE(nullptr, addr);
 
-    // Set up default host map
-    host_map_config = R"EOF(version_info: "1"
-resources:
-- "@type": type.googleapis.com/cilium.NetworkPolicyHosts
-  policy: 111
-  host_addresses: [ "10.1.1.1", "f00d::1:1:1" ]
-- "@type": type.googleapis.com/cilium.NetworkPolicyHosts
-  policy: 222
-  host_addresses: [ "10.2.2.2", "f00d::2:2:2" ]
-- "@type": type.googleapis.com/cilium.NetworkPolicyHosts
-  policy: 1
-  host_addresses: [ "127.0.0.0/8", "::1/128" ]
-- "@type": type.googleapis.com/cilium.NetworkPolicyHosts
-  policy: 8
-  host_addresses: [ "10.1.1.42", "face::42" ]
-- "@type": type.googleapis.com/cilium.NetworkPolicyHosts
-  policy: 12345678
-  host_addresses: [ "192.168.1.0/24" ]
-)EOF";
-
     // Set up default policy
     policy_config = R"EOF(version_info: "1"
 resources:
@@ -143,10 +123,7 @@ resources:
   egress_per_port_policies: {}
 )EOF";
   }
-  ~MetadataConfigTest() override {
-    hostmap.reset();
-    npmap.reset();
-  }
+  ~MetadataConfigTest() override { npmap.reset(); }
 
   void SetUp() override {}
 

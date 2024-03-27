@@ -75,21 +75,10 @@ namespace BpfMetadata {
 
 // Singleton registration via macro defined in envoy/singleton/manager.h
 SINGLETON_MANAGER_REGISTRATION(cilium_bpf_conntrack);
-SINGLETON_MANAGER_REGISTRATION(cilium_host_map);
 SINGLETON_MANAGER_REGISTRATION(cilium_ipcache);
 SINGLETON_MANAGER_REGISTRATION(cilium_network_policy);
 
 namespace {
-
-std::shared_ptr<const Cilium::PolicyHostMap>
-createHostMap(Server::Configuration::ListenerFactoryContext& context) {
-  return context.singletonManager().getTyped<const Cilium::PolicyHostMap>(
-      SINGLETON_MANAGER_REGISTERED_NAME(cilium_host_map), [&context] {
-        auto map = std::make_shared<Cilium::PolicyHostMap>(context);
-        map->startSubscription(context);
-        return map;
-      });
-}
 
 std::shared_ptr<const Cilium::NetworkPolicyMap>
 createPolicyMap(Server::Configuration::FactoryContext& context, Cilium::CtMapSharedPtr& ct) {
@@ -154,10 +143,6 @@ Config::Config(const ::cilium::BpfMetadata& config,
       throw EnvoyException(fmt::format("cilium.bpf_metadata: Invalid bpf_root: {}", bpf_root));
     }
   }
-  // Only create the hosts map if ipcache can't be opened
-  if (ipcache_ == nullptr) {
-    hosts_ = createHostMap(context);
-  }
 
   // Get the shared policy provider, or create it if not already created.
   // Note that the API config source is assumed to be the same for all filter
@@ -170,8 +155,6 @@ uint32_t Config::resolvePolicyId(const Network::Address::Ip* ip) const {
 
   if (ipcache_ != nullptr) {
     id = ipcache_->resolve(ip);
-  } else if (hosts_ != nullptr) {
-    id = hosts_->resolve(ip);
   }
 
   // default destination identity to the world if needed

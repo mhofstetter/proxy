@@ -10,14 +10,10 @@
 #include "envoy/server/filter_config.h"
 
 #include "cilium/bpf_metadata.h"
-#include "cilium/host_map.h"
 #include "cilium/network_policy.h"
 #include "tests/bpf_metadata.pb.h"
 
 namespace Envoy {
-
-extern std::string host_map_config;
-extern std::shared_ptr<const Cilium::PolicyHostMap> hostmap;
 
 extern Network::Address::InstanceConstSharedPtr original_dst_address;
 extern std::shared_ptr<const Cilium::NetworkPolicyMap> npmap;
