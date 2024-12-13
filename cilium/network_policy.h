@@ -97,10 +97,10 @@ private:
 
 class IPAddressPair {
 public:
-  IPAddressPair(){};
+  IPAddressPair() {};
   IPAddressPair(Network::Address::InstanceConstSharedPtr& ipv4,
                 Network::Address::InstanceConstSharedPtr& ipv6)
-      : ipv4_(ipv4), ipv6_(ipv6){};
+      : ipv4_(ipv4), ipv6_(ipv6) {};
   IPAddressPair(const cilium::NetworkPolicy& proto);
 
   Network::Address::InstanceConstSharedPtr ipv4_{};
@@ -266,7 +266,6 @@ private:
 
   Server::Configuration::ServerFactoryContext& context_;
   ThreadLocal::TypedSlot<ThreadLocalPolicyMap> tls_map_;
-  const std::string local_ip_str_;
   std::string name_;
   Stats::ScopeSharedPtr scope_;
   PolicyStats stats_;

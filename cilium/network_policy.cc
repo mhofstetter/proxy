@@ -24,8 +24,6 @@
 namespace Envoy {
 namespace Cilium {
 
-uint64_t NetworkPolicyMap::instance_id_ = 0;
-
 IPAddressPair::IPAddressPair(const cilium::NetworkPolicy& proto) {
   for (const auto& ipAddr : proto.endpoint_ips()) {
     auto ip = Network::Utility::parseInternetAddressNoThrow(ipAddr);
@@ -1102,9 +1100,7 @@ private:
 // This is used directly for testing with a file-based subscription
 NetworkPolicyMap::NetworkPolicyMap(Server::Configuration::FactoryContext& context)
     : context_(context.serverFactoryContext()), tls_map_(context_.threadLocal()),
-      local_ip_str_(context_.localInfo().address()->ip()->addressAsString()),
-      name_(fmt::format("cilium.policymap.{}.{}.", local_ip_str_, ++instance_id_)),
-      scope_(context_.serverScope().createScope(name_)),
+      name_("cilium.policymap."), scope_(context_.serverScope().createScope(name_)),
       stats_{ALL_CILIUM_POLICY_STATS(POOL_COUNTER_PREFIX(*scope_, "policy."),
                                      POOL_HISTOGRAM_PREFIX(*scope_, "policy."))},
       policy_update_warning_limit_ms_(100),
