@@ -1,0 +1,3 @@
+FROM quay.io/cilium/cilium-envoy-dev:dc594310aaeb4503d331b60ce977d229776158b3@sha256:10924e929e80c582c1e1adfe6e7ba038d8acf512eb4d6000cfaf4bce2ea26a26
+
+COPY ./cilium-envoy /usr/bin/

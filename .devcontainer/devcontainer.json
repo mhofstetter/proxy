@@ -1,0 +1,19 @@
+{
+  "name": "Cilium Proxy Dev",
+  "dockerFile": "../Dockerfile.builder",
+  "runArgs": [
+    "--user=cilium",
+    "--cap-add=SYS_PTRACE",
+    "--cap-add=NET_RAW",
+    "--cap-add=NET_ADMIN",
+    "--security-opt=seccomp=unconfined",
+    "--volume=${env:HOME}:${env:HOME}",
+    "--volume=envoy-build:/build",
+    "--network=host"
+  ],
+  "containerEnv": {
+    "ENVOY_SRCDIR": "${containerWorkspaceFolder}"
+  },
+  "remoteUser": "cilium",
+  "containerUser": "cilium"
+}
