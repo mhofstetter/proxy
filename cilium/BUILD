@@ -37,6 +37,7 @@ envoy_cc_library(
     hdrs = [
         "network_policy.h",
         "policy_id.h",
+        "policy_resolver.h",
     ],
     repository = "@envoy",
     deps = [

@@ -9,7 +9,6 @@
 #include <string>
 #include <utility>
 
-#include "envoy/common/pure.h"
 #include "envoy/network/address.h"
 #include "envoy/stream_info/filter_state.h"
 
@@ -18,17 +17,10 @@
 #include "absl/strings/string_view.h"
 #include "cilium/network_policy.h"
 #include "cilium/policy_id.h"
+#include "cilium/policy_resolver.h"
 
 namespace Envoy {
 namespace Cilium {
-
-class PolicyResolver {
-public:
-  virtual ~PolicyResolver() = default;
-
-  virtual uint32_t resolvePolicyId(const Network::Address::Ip*) const PURE;
-  virtual const PolicyInstance& getPolicy(const std::string&) const PURE;
-};
 
 // FilterState that holds relevant connection & policy information that can be retrieved
 // by the Cilium network- and HTTP policy filters via filter state.

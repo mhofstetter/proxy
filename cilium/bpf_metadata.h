@@ -23,6 +23,7 @@
 #include "cilium/host_map.h"
 #include "cilium/ipcache.h"
 #include "cilium/network_policy.h"
+#include "cilium/policy_resolver.h"
 #include "cilium/socket_option_cilium_mark.h"
 #include "cilium/socket_option_source_address.h"
 
