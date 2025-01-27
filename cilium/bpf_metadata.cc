@@ -398,8 +398,8 @@ Config::extractSocketMetadata(Network::ConnectionSocket& socket) {
   // the ingress path policy using the original source identity.
   uint32_t ingress_source_identity = 0;
 
-  // Use the configured IPv4/IPv6 Ingress IPs as starting point for the sources addresses
-  IPAddressPair source_addresses(ipv4_source_address_, ipv6_source_address_);
+  // Use empty IPv4/IPv6 IP pair as starting point for the source addresses
+  auto source_addresses = IPAddressPair();
 
   // NOTE: As L7 LB does not use the original destination, there is a possibility of a 5-tuple
   // collision if the same source pod is communicating with the same backends on same destination
@@ -428,11 +428,12 @@ Config::extractSocketMetadata(Network::ConnectionSocket& socket) {
     // IP version is chosen.
     source_addresses = getIPAddressPairFrom(src_address, policy->getEndpointIPs());
 
-    // Original source address is now in one of 'ipv[46]_source_address'
-    src_address = nullptr;
   } else if (is_l7lb_ && !use_original_source_address_ /* North/South L7 LB */) {
     // North/south L7 LB, assume the source security identity of the configured source addresses,
     // if any and policy for this identity exists.
+
+    // Original source address is never used for north/south LB │
+    source_addresses = IPAddressPair(ipv4_source_address_, ipv6_source_address_);
 
     // Pick the local ingress source address of the same family as the incoming connection
     const Network::Address::Ip* ingress_ip = selectIPVersion(sip->version(), source_addresses);
@@ -472,16 +473,18 @@ Config::extractSocketMetadata(Network::ConnectionSocket& socket) {
     // is the source IP)
     pod_ip = ingress_ip_str;
 
-    // Original source address is never used for north/south LB
-    src_address = nullptr;
-  } else if (!use_original_source_address_ || (npmap_ != nullptr && npmap_->exists(other_ip))) {
-    // Otherwise only use the original source address if permitted and the destination is not
-    // in the same node.
+  } else if (use_original_source_address_ && (npmap_ == nullptr || !npmap_->exists(other_ip))) {
+    // Otherwise only use the original source address if permitted (egress policy enforcement &
+    // supported by the system) and the destination is not in the same node.
     //
     // If bpf root is not configured (npmap_ == nullptr) we assume all destinations are non-local!
-    //
-    // Original source address is not used
-    src_address = nullptr;
+
+    // getIPAddressPairFrom will put the src_address into the right family field │
+    source_addresses = getIPAddressPairFrom(src_address, IPAddressPair());
+
+  } else {
+    // source address isn't used (neither to reuse upstream socket (via hashKeys), nor to set
+    // original src address)
   }
 
   // Evaluating proxylib L7 protocol for later usage in filter chain matching.
@@ -512,9 +515,8 @@ Config::extractSocketMetadata(Network::ConnectionSocket& socket) {
   }
   return absl::optional(Cilium::BpfMetadata::SocketMetadata(
       mark, ingress_source_identity, source_identity, is_ingress_, is_l7lb_, dip->port(),
-      std::move(pod_ip), std::move(src_address), std::move(source_addresses.ipv4_),
-      std::move(source_addresses.ipv6_), std::move(dst_address), weak_from_this(), proxy_id_,
-      std::move(proxylib_l7proto), sni));
+      std::move(pod_ip), std::move(source_addresses.ipv4_), std::move(source_addresses.ipv6_),
+      std::move(dst_address), weak_from_this(), proxy_id_, std::move(proxylib_l7proto), sni));
 }
 
 Network::FilterStatus Instance::onAccept(Network::ListenerFilterCallbacks& cb) {

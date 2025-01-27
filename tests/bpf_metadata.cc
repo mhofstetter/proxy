@@ -192,7 +192,7 @@ TestConfig::extractSocketMetadata(Network::ConnectionSocket& socket) {
 
   return absl::optional(Cilium::BpfMetadata::SocketMetadata(
       0, 0, source_identity, is_ingress_, is_l7lb_, port, std::move(pod_ip), nullptr, nullptr,
-      nullptr, original_dst_address, shared_from_this(), 0, std::move(l7proto), ""));
+      original_dst_address, shared_from_this(), 0, std::move(l7proto), ""));
 }
 
 } // namespace BpfMetadata

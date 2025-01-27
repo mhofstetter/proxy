@@ -17,17 +17,13 @@ namespace Envoy {
 namespace Cilium {
 
 SourceAddressSocketOption::SourceAddressSocketOption(
-    uint32_t source_identity, Network::Address::InstanceConstSharedPtr original_source_address,
-    Network::Address::InstanceConstSharedPtr ipv4_source_address,
+    uint32_t source_identity, Network::Address::InstanceConstSharedPtr ipv4_source_address,
     Network::Address::InstanceConstSharedPtr ipv6_source_address)
-    : source_identity_(source_identity),
-      original_source_address_(std::move(original_source_address)),
-      ipv4_source_address_(std::move(ipv4_source_address)),
+    : source_identity_(source_identity), ipv4_source_address_(std::move(ipv4_source_address)),
       ipv6_source_address_(std::move(ipv6_source_address)) {
   ENVOY_LOG(debug,
-            "Cilium SourceAddressSocketOption(): source_identity: {}, source_addresses: {}/{}/{}",
-            source_identity, original_source_address_ ? original_source_address_->asString() : "",
-            ipv4_source_address_ ? ipv4_source_address_->asString() : "",
+            "Cilium SourceAddressSocketOption(): source_identity: {}, source_addresses: {}/{}",
+            source_identity, ipv4_source_address_ ? ipv4_source_address_->asString() : "",
             ipv6_source_address_ ? ipv6_source_address_->asString() : "");
 }
 
@@ -46,13 +42,10 @@ bool SourceAddressSocketOption::setOption(
     return false;
   }
 
-  Network::Address::InstanceConstSharedPtr source_address = original_source_address_;
-  if (!source_address && (ipv4_source_address_ || ipv6_source_address_)) {
-    // Select source address based on the socket address family
-    source_address = ipv6_source_address_;
-    if (*ipVersion == Network::Address::IpVersion::v4) {
-      source_address = ipv4_source_address_;
-    }
+  // Select source address based on the socket address family
+  Network::Address::InstanceConstSharedPtr source_address = ipv6_source_address_;
+  if (*ipVersion == Network::Address::IpVersion::v4) {
+    source_address = ipv4_source_address_;
   }
 
   if (!source_address) {
@@ -85,8 +78,20 @@ void SourceAddressSocketOption::hashKey(std::vector<uint8_t>& key) const {
   // source address, we do not need to also add the source security ID to the
   // hash key. Note that since the identity is 3 bytes it will not collide
   // with neither an IPv4 nor IPv6 address.
-  if (original_source_address_) {
-    const auto& ip = original_source_address_->ip();
+
+  // Only use the source address if it is THE original source address
+  // (with a port != 0) - and still use the fallback with the source
+  // security ID for the cases where the source addresses are
+  // configured or evaluated from the endpoint ips (port == 0).
+  Network::Address::InstanceConstSharedPtr original_source_address;
+  if (ipv6_source_address_ && ipv6_source_address_->ip()->port() != 0) {
+    original_source_address = ipv6_source_address_;
+  } else if (ipv4_source_address_ && ipv4_source_address_->ip()->port() != 0) {
+    original_source_address = ipv4_source_address_;
+  }
+
+  if (original_source_address) {
+    const auto& ip = original_source_address->ip();
     uint16_t port = ip->port();
     if (ip->version() == Network::Address::IpVersion::v4) {
       uint32_t raw_address = ip->ipv4()->address();
@@ -95,14 +100,13 @@ void SourceAddressSocketOption::hashKey(std::vector<uint8_t>& key) const {
       absl::uint128 raw_address = ip->ipv6()->address();
       addressIntoVector(key, raw_address);
     }
-    // Add source port to the hash key if defined
-    if (port != 0) {
-      ENVOY_LOG(trace, "hashKey port: {:x}", port);
-      key.emplace_back(uint8_t(port >> 8));
-      key.emplace_back(uint8_t(port));
-    }
-    ENVOY_LOG(trace, "hashKey after with original source address: {}, original_source_address: {}",
-              Hex::encode(key), original_source_address_->asString());
+
+    ENVOY_LOG(trace, "hashKey port: {:x}", port);
+    key.emplace_back(uint8_t(port >> 8));
+    key.emplace_back(uint8_t(port));
+
+    ENVOY_LOG(trace, "hashKey with original source address: {}, original_source_address: {}",
+              Hex::encode(key), original_source_address->asString());
   } else {
     // Add the source identity to the hash key. This will separate upstream
     // connection pools per security ID.

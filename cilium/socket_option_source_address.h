@@ -22,11 +22,9 @@ namespace Cilium {
 class SourceAddressSocketOption : public Network::Socket::Option,
                                   public Logger::Loggable<Logger::Id::filter> {
 public:
-  SourceAddressSocketOption(
-      uint32_t source_identity,
-      Network::Address::InstanceConstSharedPtr original_source_address = nullptr,
-      Network::Address::InstanceConstSharedPtr ipv4_source_address = nullptr,
-      Network::Address::InstanceConstSharedPtr ipv6_source_address = nullptr);
+  SourceAddressSocketOption(uint32_t source_identity,
+                            Network::Address::InstanceConstSharedPtr ipv4_source_address = nullptr,
+                            Network::Address::InstanceConstSharedPtr ipv6_source_address = nullptr);
 
   absl::optional<Network::Socket::Option::Details>
   getOptionDetails(const Network::Socket&,
@@ -43,7 +41,6 @@ public:
 
   uint32_t source_identity_;
 
-  Network::Address::InstanceConstSharedPtr original_source_address_;
   // Version specific source addresses are only used if original source address is not used.
   // Selection is made based on the socket domain, which is selected based on the destination
   // address. This makes sure we don't try to bind IPv4 or IPv6 source address to a socket

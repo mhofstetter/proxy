@@ -33,7 +33,6 @@ namespace BpfMetadata {
 struct SocketMetadata : public Logger::Loggable<Logger::Id::filter> {
   SocketMetadata(uint32_t mark, uint32_t ingress_source_identity, uint32_t source_identity,
                  bool ingress, bool l7lb, uint16_t port, std::string&& pod_ip,
-                 Network::Address::InstanceConstSharedPtr original_source_address,
                  Network::Address::InstanceConstSharedPtr source_address_ipv4,
                  Network::Address::InstanceConstSharedPtr source_address_ipv6,
                  Network::Address::InstanceConstSharedPtr original_dest_address,
@@ -43,7 +42,6 @@ struct SocketMetadata : public Logger::Loggable<Logger::Id::filter> {
         ingress_(ingress), is_l7lb_(l7lb), port_(port), pod_ip_(std::move(pod_ip)),
         proxy_id_(proxy_id), proxylib_l7_proto_(std::move(proxylib_l7_proto)), sni_(sni),
         policy_resolver_(policy_resolver), mark_(mark),
-        original_source_address_(std::move(original_source_address)),
         source_address_ipv4_(std::move(source_address_ipv4)),
         source_address_ipv6_(std::move(source_address_ipv6)),
         original_dest_address_(std::move(original_dest_address)) {}
@@ -60,7 +58,7 @@ struct SocketMetadata : public Logger::Loggable<Logger::Id::filter> {
 
   std::shared_ptr<Envoy::Cilium::SourceAddressSocketOption> buildSourceAddressSocketOption() {
     return std::make_shared<Envoy::Cilium::SourceAddressSocketOption>(
-        source_identity_, original_source_address_, source_address_ipv4_, source_address_ipv6_);
+        source_identity_, source_address_ipv4_, source_address_ipv6_);
   };
 
   // Add ProxyLib L7 protocol as requested application protocol on the socket.
@@ -111,7 +109,6 @@ struct SocketMetadata : public Logger::Loggable<Logger::Id::filter> {
 
   uint32_t mark_;
 
-  Network::Address::InstanceConstSharedPtr original_source_address_;
   Network::Address::InstanceConstSharedPtr source_address_ipv4_;
   Network::Address::InstanceConstSharedPtr source_address_ipv6_;
   Network::Address::InstanceConstSharedPtr original_dest_address_;

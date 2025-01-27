@@ -295,7 +295,6 @@ TEST_F(MetadataConfigTest, NorthSouthL7LbMetadata) {
   auto source_addresses_socket_option = socket_metadata->buildSourceAddressSocketOption();
   EXPECT_NE(nullptr, source_addresses_socket_option);
 
-  EXPECT_EQ(nullptr, source_addresses_socket_option->original_source_address_);
   EXPECT_EQ("10.1.1.42:0", source_addresses_socket_option->ipv4_source_address_->asString());
   EXPECT_EQ("[face::42]:0", source_addresses_socket_option->ipv6_source_address_->asString());
 
@@ -338,7 +337,6 @@ TEST_F(MetadataConfigTest, NorthSouthL7LbIngressEnforcedMetadata) {
   auto source_addresses_socket_option = socket_metadata->buildSourceAddressSocketOption();
   EXPECT_NE(nullptr, source_addresses_socket_option);
 
-  EXPECT_EQ(nullptr, source_addresses_socket_option->original_source_address_);
   EXPECT_EQ("10.1.1.42:0", source_addresses_socket_option->ipv4_source_address_->asString());
   EXPECT_EQ("[face::42]:0", source_addresses_socket_option->ipv6_source_address_->asString());
 
@@ -381,7 +379,6 @@ TEST_F(MetadataConfigTest, NorthSouthL7LbIngressEnforcedCIDRMetadata) {
   auto source_addresses_socket_option = socket_metadata->buildSourceAddressSocketOption();
   EXPECT_NE(nullptr, source_addresses_socket_option);
 
-  EXPECT_EQ(nullptr, source_addresses_socket_option->original_source_address_);
   EXPECT_EQ("10.1.1.42:0", source_addresses_socket_option->ipv4_source_address_->asString());
   EXPECT_EQ("[face::42]:0", source_addresses_socket_option->ipv6_source_address_->asString());
 
@@ -433,7 +430,6 @@ TEST_F(MetadataConfigTest, EastWestL7LbMetadata) {
   auto source_addresses_socket_option = socket_metadata->buildSourceAddressSocketOption();
   EXPECT_NE(nullptr, source_addresses_socket_option);
 
-  EXPECT_EQ(nullptr, source_addresses_socket_option->original_source_address_);
   EXPECT_EQ("10.1.1.1:41234", source_addresses_socket_option->ipv4_source_address_->asString());
   EXPECT_EQ("[face::1:1:1]:41234",
             source_addresses_socket_option->ipv6_source_address_->asString());
@@ -471,7 +467,6 @@ TEST_F(MetadataConfigTest, EastWestL7LbMetadataNoOriginalSource) {
   auto source_addresses_socket_option = socket_metadata->buildSourceAddressSocketOption();
   EXPECT_NE(nullptr, source_addresses_socket_option);
 
-  EXPECT_EQ(nullptr, source_addresses_socket_option->original_source_address_);
   EXPECT_EQ("10.1.1.42:0", source_addresses_socket_option->ipv4_source_address_->asString());
   EXPECT_EQ("[face::42]:0", source_addresses_socket_option->ipv6_source_address_->asString());
 
